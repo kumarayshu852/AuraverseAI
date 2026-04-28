@@ -37,7 +37,7 @@ client = OpenAI(
     base_url="https://api.groq.com/openai/v1",
 )
 
-NODE_SERVER = "http://localhost:3000"
+NODE_SERVER = "https://auraverseai-backend.onrender.com/"
 
 SYSTEM_PROMPT = """You are AuraVerse — an advanced AI assistant created by Gandhi Tech AI, led by Sumit Gandhi.
 
