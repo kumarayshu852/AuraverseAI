@@ -875,7 +875,7 @@ Memory context:\n${memory || 'No memory yet.'}`;
       image_url: { url: `data:${imageType};base64,${imageBase64}` }
     });
   }
-  userContent.push({ type: 'text', text: userText });
+  userContent.push({ type: 'text', text: String(userText || '') });
 
   // Keep conversation history (last 10 turns)
   conversationHistory.push({ role: 'user', content: userContent });
@@ -1449,7 +1449,7 @@ async function askAboutFiles() {
   closeFilePanel();
   addMsg('YOU', 'What can you tell me about my files?', 'user');
   setStatus('Analyzing folder...');
-  const reply = await callClaude(`Analyze this folder structure and give insights: ${fileSummary}`);
+  const reply = await callClaude(String(`Analyze this folder structure and give insights: ${fileSummary}`));
   addMsg('AURAVERSE', reply, 'jarvis');
   speak(reply);
   setStatus('Tap microphone to speak, Sir');
