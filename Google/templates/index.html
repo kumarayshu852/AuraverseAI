@@ -1,0 +1,1859 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>AURAVERSE — Advanced AI Interface</title>
+<!-- PWA -->
+<meta name="theme-color" content="#04090f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="AURAVERSE">
+<link rel="manifest" id="pwaManifest" href="">
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@200;300;400;600&family=Orbitron:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --accent: #4fc3f7;
+  --accent2: #00e5ff;
+  --glow: rgba(79,195,247,0.35);
+  --red: #ef5350;
+  --green: #66bb6a;
+  --bg: #04090f;
+  --panel: rgba(8,20,40,0.85);
+  --border: rgba(79,195,247,0.2);
+  --text: rgba(255,255,255,0.85);
+}
+
+body {
+  background: var(--bg);
+  min-height: 100vh; width: 100vw;
+  overflow: hidden;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: space-between;
+  font-family: 'Exo 2', sans-serif;
+  color: var(--text);
+  position: relative;
+  user-select: none;
+}
+
+/* ── BLOBS ── */
+.blobs { position: absolute; inset: 0; z-index: 0; overflow: hidden; }
+.blob {
+  position: absolute; border-radius: 50%;
+  filter: blur(70px); opacity: 0.65;
+}
+.b1 { width:380px;height:380px; background:radial-gradient(circle,#1e3a8a,#0d2044);
+      top:50%;left:50%; transform:translate(-50%,-50%);
+      animation: bm1 9s ease-in-out infinite alternate; }
+.b2 { width:280px;height:300px; background:radial-gradient(circle,#1565c0,#0a1f4e);
+      top:40%;left:45%; animation: bm2 11s ease-in-out infinite alternate; }
+.b3 { width:220px;height:200px; background:radial-gradient(circle,#4fc3f7aa,#0288d1bb);
+      top:55%;left:52%; opacity:0.45; animation: bm3 7s ease-in-out infinite alternate; }
+
+@keyframes bm1 { 0%{transform:translate(-50%,-50%) scale(1)} 50%{transform:translate(-48%,-53%) scale(1.12)} 100%{transform:translate(-52%,-47%) scale(0.95)} }
+@keyframes bm2 { 0%{transform:translate(10px,15px) scale(1)} 50%{transform:translate(-20px,-10px) scale(1.08)} 100%{transform:translate(15px,20px) scale(0.92)} }
+@keyframes bm3 { 0%{transform:translate(-10px,20px) scale(1)} 50%{transform:translate(20px,-15px) scale(1.15)} 100%{transform:translate(-5px,10px) scale(1)} }
+
+body.listening .b1 { animation: bpulse 1.4s ease-in-out infinite !important; opacity:0.95; }
+body.speaking  .b1 { animation: bpulse 0.8s ease-in-out infinite !important; opacity:0.9; filter:blur(55px); }
+body.speaking  .b3 { opacity:0.8; }
+
+@keyframes bpulse { 0%,100%{transform:translate(-50%,-50%) scale(1);filter:blur(70px)} 50%{transform:translate(-50%,-50%) scale(1.22);filter:blur(45px)} }
+
+/* ── SETUP SCREEN ── */
+#setupScreen {
+  position: fixed; inset: 0; z-index: 1000;
+  background: var(--bg);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 20px; padding: 30px;
+}
+#setupScreen h1 { font-family:'Orbitron',monospace; font-size:22px; letter-spacing:6px; color:var(--accent); }
+#setupScreen p  { font-size:13px; color:rgba(255,255,255,0.5); text-align:center; max-width:340px; line-height:1.6; }
+#apiKeyInput {
+  width:100%; max-width:380px; padding:12px 16px;
+  background:rgba(79,195,247,0.06); border:1px solid var(--border);
+  border-radius:10px; color:var(--accent); font-family:'Exo 2',sans-serif;
+  font-size:13px; outline:none; letter-spacing:1px;
+}
+#apiKeyInput::placeholder { color:rgba(79,195,247,0.3); }
+#setupBtn {
+  padding:12px 32px; background:rgba(79,195,247,0.15);
+  border:1.5px solid var(--accent); border-radius:25px;
+  color:var(--accent); font-family:'Orbitron',monospace;
+  font-size:12px; letter-spacing:3px; cursor:pointer;
+  transition:all 0.3s;
+}
+#setupBtn:hover { background:rgba(79,195,247,0.28); box-shadow:0 0 20px var(--glow); }
+.setup-note { font-size:11px; color:rgba(255,255,255,0.3); text-align:center; max-width:340px; }
+
+/* ── TOP BAR ── */
+.topbar {
+  position:relative; z-index:10; width:100%;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:16px 18px 0;
+}
+.topbar-left { display:flex; align-items:center; gap:10px; }
+.status-dot { width:7px;height:7px; border-radius:50%; background:var(--green); box-shadow:0 0 8px var(--green); animation:dotblink 2.5s ease-in-out infinite; }
+@keyframes dotblink { 0%,100%{opacity:1} 50%{opacity:0.25} }
+.jarvis-title { font-family:'Orbitron',monospace; font-size:11px; letter-spacing:5px; color:rgba(255,255,255,0.3); }
+.topbar-right { display:flex; gap:8px; }
+.top-btn {
+  background:rgba(79,195,247,0.07); border:1px solid var(--border);
+  color:var(--accent); font-size:10px; padding:5px 11px;
+  border-radius:16px; cursor:pointer; font-family:'Exo 2',sans-serif;
+  letter-spacing:1px; transition:all 0.3s;
+}
+.top-btn:hover { background:rgba(79,195,247,0.18); }
+.top-btn.active { background:rgba(79,195,247,0.22); border-color:var(--accent); box-shadow:0 0 10px var(--glow); }
+
+/* ── FEATURE INDICATORS (top) ── */
+.feat-row {
+  position:relative; z-index:10;
+  display:flex; gap:8px; margin-top:6px;
+}
+.feat-pill {
+  font-family:'Orbitron',monospace; font-size:8px; letter-spacing:2px;
+  padding:3px 10px; border-radius:10px;
+  border:1px solid rgba(255,255,255,0.1);
+  color:rgba(255,255,255,0.25);
+  transition:all 0.3s;
+}
+.feat-pill.on { color:var(--accent2); border-color:var(--accent2); background:rgba(0,229,255,0.08); box-shadow:0 0 8px rgba(0,229,255,0.2); }
+.feat-pill.warn { color:#ffb74d; border-color:#ffb74d; background:rgba(255,183,77,0.08); }
+
+/* ── CAMERA RING ── */
+.face-area {
+  position:relative; z-index:2;
+  display:flex; flex-direction:column;
+  align-items:center; gap:8px; margin-top:6px;
+}
+.camera-ring {
+  width:110px; height:110px; border-radius:50%;
+  border:1.5px solid rgba(79,195,247,0.4);
+  box-shadow:0 0 20px var(--glow);
+  position:relative; overflow:hidden;
+  animation:ringglow 3s ease-in-out infinite;
+}
+body.speaking .camera-ring { border-color:var(--accent2); box-shadow:0 0 36px rgba(0,229,255,0.5); }
+@keyframes ringglow { 0%,100%{box-shadow:0 0 18px var(--glow)} 50%{box-shadow:0 0 38px var(--glow)} }
+#camFeed { width:100%;height:100%;object-fit:cover;border-radius:50%;display:none; }
+.cam-ph  { width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:34px;background:radial-gradient(circle,rgba(79,195,247,0.07),transparent); }
+.scanline { position:absolute;left:0;width:100%;height:32%;background:linear-gradient(transparent,rgba(79,195,247,0.16),transparent);animation:scanmove 2.5s linear infinite;pointer-events:none; }
+@keyframes scanmove { 0%{top:-32%} 100%{top:130%} }
+.brkt { position:absolute;width:14px;height:14px;border-color:var(--accent);border-style:solid;opacity:0.7; }
+.brkt.tl{top:5px;left:5px;border-width:2px 0 0 2px}
+.brkt.tr{top:5px;right:5px;border-width:2px 2px 0 0}
+.brkt.bl{bottom:5px;left:5px;border-width:0 0 2px 2px}
+.brkt.br{bottom:5px;right:5px;border-width:0 2px 2px 0}
+
+/* Screen preview thumbnail */
+#screenThumb {
+  position:absolute; bottom:-40px; right:-40px;
+  width:80px; height:52px; border-radius:6px;
+  border:1px solid rgba(79,195,247,0.4);
+  object-fit:cover; display:none;
+  box-shadow:0 0 10px var(--glow);
+}
+
+#faceStatus { font-family:'Orbitron',monospace;font-size:8px;letter-spacing:2px;color:var(--accent); }
+
+/* ── CENTER ── */
+.center-area {
+  z-index:2; text-align:center;
+  display:flex; flex-direction:column;
+  align-items:center; gap:6px;
+  flex:1; justify-content:center; padding:0 28px;
+}
+#mainStatus { font-size:14px;font-weight:200;letter-spacing:0.5px;color:rgba(255,255,255,0.65);min-height:20px; }
+#transcript  { font-size:12px;color:rgba(79,195,247,0.6);font-style:italic;min-height:17px;max-width:300px; }
+#vizLabel    { font-family:'Orbitron',monospace;font-size:10px;letter-spacing:3px;color:var(--accent);opacity:0.7;margin-top:4px; }
+#vizSub      { font-size:9px;letter-spacing:2px;color:rgba(255,255,255,0.3);margin-top:2px; }
+
+/* ── VOLUME BARS ── */
+#volWrap { z-index:5;display:none;gap:3px;align-items:flex-end;height:26px;margin-bottom:-6px; }
+#volWrap.on { display:flex; }
+.vb { width:4px;background:var(--accent);border-radius:2px;opacity:0.7;min-height:3px;transition:height 0.07s; }
+
+/* ── ERROR ── */
+#errMsg { position:absolute;bottom:148px;left:50%;transform:translateX(-50%);font-size:11px;color:#ff8a80;z-index:10;text-align:center;white-space:nowrap;pointer-events:none; }
+
+/* ── MAIN CONTROLS ── */
+.controls { z-index:10;display:flex;align-items:center;gap:26px;padding-bottom:14px; }
+.ctrl-btn { display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer; }
+.btn-c { border-radius:50%;display:flex;align-items:center;justify-content:center;transition:transform 0.15s,box-shadow 0.2s; }
+.btn-c:active { transform:scale(0.91) !important; }
+#holdBtn .btn-c { width:52px;height:52px;font-size:18px;background:rgba(255,255,255,0.06);border:1.5px solid rgba(255,255,255,0.15); }
+#micBtn  .btn-c { width:68px;height:68px;font-size:24px;background:rgba(79,195,247,0.12);border:2px solid rgba(79,195,247,0.42);box-shadow:0 0 20px var(--glow); }
+#endBtn  .btn-c { width:52px;height:52px;font-size:18px;background:rgba(239,83,80,0.16);border:1.5px solid rgba(239,83,80,0.42);box-shadow:0 0 14px rgba(239,83,80,0.18); }
+#micBtn.listening .btn-c { background:rgba(79,195,247,0.26);box-shadow:0 0 42px rgba(79,195,247,0.6);animation:micglow 1.2s ease-in-out infinite; }
+@keyframes micglow { 0%,100%{box-shadow:0 0 28px var(--glow)} 50%{box-shadow:0 0 58px rgba(79,195,247,0.7)} }
+.btn-lbl { font-size:10px;font-weight:300;letter-spacing:1px;color:rgba(255,255,255,0.45); }
+
+/* ── FEATURE BUTTONS ── */
+.feat-controls { z-index:10;display:flex;gap:10px;padding-bottom:22px; }
+.feat-btn {
+  display:flex;flex-direction:column;align-items:center;gap:5px;
+  cursor:pointer; padding:8px 14px;
+  background:rgba(79,195,247,0.05);
+  border:1px solid rgba(79,195,247,0.15);
+  border-radius:12px; transition:all 0.3s;
+  font-size:18px;
+}
+.feat-btn span { font-size:9px;letter-spacing:1px;color:rgba(255,255,255,0.4);font-family:'Orbitron',monospace; }
+.feat-btn:hover { background:rgba(79,195,247,0.12);border-color:rgba(79,195,247,0.35); }
+.feat-btn.active { background:rgba(79,195,247,0.18);border-color:var(--accent);box-shadow:0 0 12px var(--glow); }
+.feat-btn.active span { color:var(--accent); }
+
+/* ── CHAT LOG ── */
+#chatLog {
+  position:absolute;inset:0;overflow-y:auto;
+  padding:68px 16px 210px;z-index:1;
+  display:flex;flex-direction:column;gap:10px;
+  pointer-events:none;opacity:0;transition:opacity 0.4s;
+}
+#chatLog.visible { opacity:1;pointer-events:auto; }
+.msg { max-width:80%;padding:10px 15px;border-radius:16px;font-size:12px;line-height:1.6;backdrop-filter:blur(10px); }
+.msg.user   { align-self:flex-end;background:rgba(79,195,247,0.11);border:1px solid rgba(79,195,247,0.22); }
+.msg.jarvis { align-self:flex-start;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.09);color:rgba(255,255,255,0.78); }
+.msg .sndr  { font-family:'Orbitron',monospace;font-size:7px;letter-spacing:2px;margin-bottom:5px;opacity:0.45; }
+.msg .vision-tag { font-size:9px;color:var(--accent);opacity:0.6;margin-top:4px; }
+
+/* ── FILE PANEL ── */
+#filePanel {
+  position:fixed;bottom:0;left:0;right:0;z-index:50;
+  background:rgba(4,9,15,0.97);border-top:1px solid var(--border);
+  padding:16px 20px 24px;
+  transform:translateY(100%);transition:transform 0.35s cubic-bezier(0.4,0,0.2,1);
+  max-height:55vh;overflow-y:auto;
+  backdrop-filter:blur(20px);
+}
+#filePanel.open { transform:translateY(0); }
+#filePanel h3  { font-family:'Orbitron',monospace;font-size:11px;letter-spacing:3px;color:var(--accent);margin-bottom:12px; }
+#fileList { display:flex;flex-direction:column;gap:6px; }
+.file-item {
+  display:flex;align-items:center;gap:10px;
+  padding:8px 12px;border-radius:8px;
+  background:rgba(79,195,247,0.04);border:1px solid rgba(79,195,247,0.1);
+  font-size:12px;cursor:pointer;transition:all 0.2s;
+}
+.file-item:hover { background:rgba(79,195,247,0.1);border-color:rgba(79,195,247,0.3); }
+.file-item .fi-icon { font-size:16px;width:20px; }
+.file-item .fi-name { flex:1;color:rgba(255,255,255,0.75); }
+.file-item .fi-type { font-size:10px;color:rgba(255,255,255,0.3);font-family:'Orbitron',monospace; }
+.file-item.folder { border-color:rgba(255,183,77,0.2); }
+.file-item.folder .fi-name { color:#ffb74d; }
+.panel-close { position:absolute;top:12px;right:16px;cursor:pointer;color:rgba(255,255,255,0.4);font-size:18px; }
+#filePathBar { font-size:10px;color:rgba(79,195,247,0.5);margin-bottom:10px;font-family:'Orbitron',monospace;letter-spacing:1px; }
+#fileActions { display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap; }
+.faction-btn {
+  font-size:10px;padding:5px 12px;border-radius:20px;
+  border:1px solid var(--border);background:transparent;
+  color:var(--accent);cursor:pointer;letter-spacing:1px;
+  font-family:'Exo 2',sans-serif;transition:all 0.2s;
+}
+.faction-btn:hover { background:rgba(79,195,247,0.1); }
+
+/* ── MEMORY PANEL ── */
+#memPanel {
+  position:fixed;top:0;right:0;bottom:0;width:min(320px,90vw);z-index:50;
+  background:rgba(4,9,15,0.97);border-left:1px solid var(--border);
+  padding:20px;transform:translateX(100%);transition:transform 0.35s cubic-bezier(0.4,0,0.2,1);
+  overflow-y:auto;backdrop-filter:blur(20px);
+}
+#memPanel.open { transform:translateX(0); }
+#memPanel h3 { font-family:'Orbitron',monospace;font-size:11px;letter-spacing:3px;color:var(--accent);margin-bottom:16px; }
+.mem-item { padding:8px 12px;border-radius:8px;background:rgba(79,195,247,0.04);border:1px solid rgba(79,195,247,0.1);font-size:11px;line-height:1.5;color:rgba(255,255,255,0.7);margin-bottom:6px; }
+#clearMemBtn { margin-top:12px;width:100%;padding:8px;border-radius:8px;background:rgba(239,83,80,0.1);border:1px solid rgba(239,83,80,0.3);color:#ef9a9a;font-size:11px;cursor:pointer;letter-spacing:1px;transition:all 0.2s; }
+#clearMemBtn:hover { background:rgba(239,83,80,0.2); }
+
+/* Scrollbar */
+::-webkit-scrollbar { width:4px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:rgba(79,195,247,0.25);border-radius:2px; }
+
+/* Screen capture overlay */
+#screenPreviewWrap {
+  position:fixed;bottom:160px;right:16px;z-index:20;
+  display:none;flex-direction:column;gap:4px;align-items:flex-end;
+}
+#screenPreviewWrap.on { display:flex; }
+#screenCanvas { width:120px;border-radius:8px;border:1px solid rgba(79,195,247,0.35);box-shadow:0 0 12px var(--glow); }
+.scr-label { font-size:8px;letter-spacing:1px;color:var(--accent);font-family:'Orbitron',monospace; }
+
+@media (max-width:480px) {
+  .feat-btn { padding:7px 10px; font-size:16px; }
+  .jarvis-title { font-size:9px;letter-spacing:3px; }
+  /* Mobile: controls thoda upar */
+  .controls { gap:18px; padding-bottom:10px; }
+  #micBtn .btn-c { width:60px; height:60px; font-size:20px; }
+  #holdBtn .btn-c, #endBtn .btn-c { width:46px; height:46px; font-size:16px; }
+  /* Chat log mobile */
+  #chatLog { padding:60px 10px 190px; }
+  .msg { max-width:92%; font-size:11px; }
+  /* Setup screen mobile */
+  #setupScreen h1 { font-size:16px; letter-spacing:4px; }
+  #apiKeyInput { font-size:12px; }
+  /* Memory panel full width on mobile */
+  #memPanel { width:100%; }
+  /* Topbar compact */
+  .topbar { padding:12px 12px 0; }
+  .top-btn { font-size:9px; padding:4px 8px; }
+}
+
+/* Mobile landscape */
+@media (max-height:500px) and (orientation:landscape) {
+  .face-area { display:none; }
+  .center-area { flex:0; gap:2px; }
+  .controls { padding-bottom:6px; }
+  #chatLog { padding:50px 10px 130px; }
+}
+/* ── SYSTEM INFO BAR ── */
+#sysBar {
+  position:relative; z-index:10; width:100%;
+  display:flex; align-items:center; justify-content:center;
+  gap:14px; padding:4px 16px;
+  background:rgba(0,0,0,0.25);
+  border-bottom:1px solid rgba(79,195,247,0.08);
+}
+.sys-item {
+  display:flex; align-items:center; gap:4px;
+  font-size:9px; letter-spacing:1px;
+  font-family:'Orbitron',monospace;
+  color:rgba(255,255,255,0.35);
+}
+.sys-item.warn { color:#ffb74d; }
+.sys-item.good { color:var(--green); }
+.sys-item span { color:rgba(255,255,255,0.6); }
+
+/* ── MODE PANEL ── */
+#modePanel {
+  position:fixed; bottom:0; left:0; right:0; z-index:55;
+  background:rgba(4,9,15,0.97); border-top:1px solid var(--border);
+  padding:16px 20px 28px;
+  transform:translateY(100%); transition:transform 0.35s cubic-bezier(0.4,0,0.2,1);
+  backdrop-filter:blur(20px);
+}
+#modePanel.open { transform:translateY(0); }
+#modePanel h3 { font-family:'Orbitron',monospace; font-size:11px; letter-spacing:3px; color:var(--accent); margin-bottom:14px; }
+.mode-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
+.mode-card {
+  display:flex; flex-direction:column; align-items:center; gap:6px;
+  padding:12px 8px; border-radius:12px;
+  border:1px solid rgba(79,195,247,0.15);
+  background:rgba(79,195,247,0.04);
+  cursor:pointer; transition:all 0.25s;
+  font-family:'Orbitron',monospace;
+}
+.mode-card:hover { background:rgba(79,195,247,0.1); border-color:rgba(79,195,247,0.4); }
+.mode-card.active { background:rgba(79,195,247,0.2); border-color:var(--accent); box-shadow:0 0 14px var(--glow); }
+.mode-card .mc-ico { font-size:22px; }
+.mode-card .mc-name { font-size:9px; letter-spacing:2px; color:var(--accent); }
+.mode-card .mc-desc { font-size:8px; color:rgba(255,255,255,0.35); text-align:center; line-height:1.4; font-family:'Exo 2',sans-serif; letter-spacing:0; }
+#modeIndicator {
+  position:relative; z-index:10;
+  font-family:'Orbitron',monospace; font-size:8px; letter-spacing:2px;
+  padding:2px 10px; border-radius:10px;
+  border:1px solid rgba(79,195,247,0.2);
+  color:rgba(79,195,247,0.5);
+  cursor:pointer; transition:all 0.3s;
+}
+#modeIndicator:hover { border-color:var(--accent); color:var(--accent); }
+
+/* ── REMINDER PANEL ── */
+#remPanel {
+  position:fixed; top:0; left:0; bottom:0; width:min(300px,90vw); z-index:55;
+  background:rgba(4,9,15,0.97); border-right:1px solid var(--border);
+  padding:20px 16px; transform:translateX(-100%);
+  transition:transform 0.35s cubic-bezier(0.4,0,0.2,1);
+  overflow-y:auto; backdrop-filter:blur(20px);
+  display:flex; flex-direction:column; gap:12px;
+}
+#remPanel.open { transform:translateX(0); }
+#remPanel h3 { font-family:'Orbitron',monospace; font-size:11px; letter-spacing:3px; color:var(--accent); }
+.rem-input-row { display:flex; flex-direction:column; gap:8px; }
+.rem-input {
+  padding:9px 12px; background:rgba(79,195,247,0.06);
+  border:1px solid var(--border); border-radius:8px;
+  color:var(--accent); font-family:'Exo 2',sans-serif; font-size:12px;
+  outline:none; width:100%;
+}
+.rem-input::placeholder { color:rgba(79,195,247,0.3); }
+.rem-add-btn {
+  padding:8px; border-radius:8px;
+  background:rgba(79,195,247,0.12); border:1px solid var(--accent);
+  color:var(--accent); font-size:11px; letter-spacing:1px;
+  cursor:pointer; transition:all 0.2s;
+}
+.rem-add-btn:hover { background:rgba(79,195,247,0.25); }
+#remList { display:flex; flex-direction:column; gap:6px; flex:1; }
+.rem-item {
+  padding:8px 12px; border-radius:8px;
+  background:rgba(79,195,247,0.04); border:1px solid rgba(79,195,247,0.1);
+  font-size:11px; color:rgba(255,255,255,0.7);
+  display:flex; justify-content:space-between; align-items:center; gap:8px;
+}
+.rem-item .rem-del { cursor:pointer; color:var(--red); font-size:13px; flex-shrink:0; }
+.rem-item .rem-time { font-size:9px; color:var(--accent); font-family:'Orbitron',monospace; }
+
+/* ── INSTALL BANNER ── */
+#installBanner {
+  position:fixed; top:0; left:0; right:0; z-index:200;
+  background:linear-gradient(135deg,rgba(8,20,40,0.98),rgba(15,30,60,0.98));
+  border-bottom:1px solid rgba(79,195,247,0.3);
+  padding:12px 18px; display:none;
+  align-items:center; gap:12px;
+  box-shadow:0 4px 20px rgba(0,0,0,0.5);
+}
+#installBanner.show { display:flex; }
+#installBanner .ib-text { flex:1; font-size:12px; color:rgba(255,255,255,0.75); }
+#installBanner .ib-text strong { color:var(--accent); font-family:'Orbitron',monospace; font-size:10px; letter-spacing:2px; }
+#installBtn {
+  padding:7px 16px; background:rgba(79,195,247,0.2);
+  border:1px solid var(--accent); border-radius:20px;
+  color:var(--accent); font-size:11px; letter-spacing:1px;
+  cursor:pointer; white-space:nowrap;
+}
+#installDismiss { color:rgba(255,255,255,0.3); cursor:pointer; font-size:18px; }
+
+/* ── NOTIF TOAST ── */
+#notifToast {
+  position:fixed; top:60px; left:50%; transform:translateX(-50%);
+  background:rgba(8,20,40,0.95); border:1px solid var(--accent);
+  border-radius:12px; padding:10px 18px;
+  font-size:12px; color:var(--text); z-index:300;
+  display:none; align-items:center; gap:8px;
+  box-shadow:0 4px 20px var(--glow); max-width:90vw;
+  backdrop-filter:blur(12px);
+}
+#notifToast.show { display:flex; }
+#notifToast .nt-icon { font-size:18px; }
+
+</style>
+</head>
+<body>
+
+<!-- ── SETUP SCREEN ── -->
+<div id="setupScreen">
+  <div class="blobs" style="position:absolute;inset:0;z-index:-1">
+    <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
+  </div>
+  <h1>A·U·R·A·V·E·R·S·E</h1>
+  <p>Advanced AI Interface — Vision, Voice, Screen Share & File Access</p>
+  <input id="apiKeyInput" type="password" placeholder="Enter Groq API Key (gsk_...)" autocomplete="off">
+
+  <!-- Gender / Voice selector -->
+  <div style="display:flex;flex-direction:column;align-items:center;gap:8px;width:100%;max-width:380px">
+    <p style="font-size:11px;color:rgba(79,195,247,0.6);letter-spacing:1px">SELECT AURAVERSE VOICE</p>
+    <div style="display:flex;gap:12px">
+      <div id="genderMale" onclick="selectGender('male')" style="cursor:pointer;padding:10px 24px;border-radius:20px;border:1.5px solid rgba(79,195,247,0.4);background:rgba(79,195,247,0.15);color:var(--accent);font-family:'Orbitron',monospace;font-size:11px;letter-spacing:2px;transition:all 0.3s">
+        👨 MALE
+      </div>
+      <div id="genderFemale" onclick="selectGender('female')" style="cursor:pointer;padding:10px 24px;border-radius:20px;border:1.5px solid rgba(255,255,255,0.15);background:transparent;color:rgba(255,255,255,0.4);font-family:'Orbitron',monospace;font-size:11px;letter-spacing:2px;transition:all 0.3s">
+        👩 FEMALE
+      </div>
+    </div>
+  </div>
+
+  <button id="setupBtn" onclick="initJarvis()">INITIALIZE SYSTEM</button>
+  <p class="setup-note">⚠️ Key is stored locally in your browser only. For production, use a backend proxy.<br>Get free key: <a href="https://console.groq.com" target="_blank" style="color:var(--accent)">console.groq.com</a></p>
+</div>
+
+<!-- ── INSTALL BANNER ── -->
+<div id="installBanner">
+  <div class="ib-text"><strong>INSTALL APP</strong><br>Home screen pe add karo — offline bhi chalega</div>
+  <button id="installBtn" onclick="pwaInstall()">Install</button>
+  <span id="installDismiss" onclick="dismissInstall()">✕</span>
+</div>
+
+<!-- ── NOTIF TOAST ── -->
+<div id="notifToast">
+  <span class="nt-icon">🔔</span>
+  <span id="notifText">Notification</span>
+</div>
+
+<!-- ── MAIN UI ── -->
+<div class="blobs"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
+<div id="chatLog"></div>
+
+<!-- ── SYSTEM INFO BAR ── -->
+<div id="sysBar">
+  <div class="sys-item" id="siBattery">🔋 <span id="siBat">--</span></div>
+  <div class="sys-item" id="siNet">📶 <span id="siNetTxt">--</span></div>
+  <div class="sys-item" id="siTime">🕐 <span id="siTimeTxt">--</span></div>
+</div>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="status-dot"></div>
+    <div class="jarvis-title">A·U·R·A·V·E·R·S·E</div>
+  </div>
+  <div class="topbar-right">
+    <button class="top-btn" onclick="toggleChat()">LOGS</button>
+    <button class="top-btn" onclick="toggleMem()">MEMORY</button>
+    <button class="top-btn" onclick="toggleRemPanel()">⏰</button>
+    <button class="top-btn" id="voiceToggleBtn" onclick="toggleVoiceGender()" title="Switch Voice">👨</button>
+    <button class="top-btn" onclick="resetKey()" title="Change API Key">⚙</button>
+  </div>
+</div>
+
+<div class="feat-row">
+  <div class="feat-pill" id="pill-cam">CAM</div>
+  <div class="feat-pill" id="pill-scr">SCREEN</div>
+  <div class="feat-pill" id="pill-files">FILES</div>
+  <div class="feat-pill" id="pill-mem">MEMORY</div>
+</div>
+<div id="modeIndicator" onclick="toggleModePanel()">MODE: <span id="modeName">DEFAULT</span></div>
+
+<div class="face-area">
+  <div class="camera-ring">
+    <video id="camFeed" autoplay muted playsinline></video>
+    <div class="cam-ph" id="camPh">👤</div>
+    <div class="scanline"></div>
+    <div class="brkt tl"></div><div class="brkt tr"></div>
+    <div class="brkt bl"></div><div class="brkt br"></div>
+    <canvas id="camCanvas" style="display:none"></canvas>
+  </div>
+  <div id="faceStatus">STANDBY</div>
+</div>
+
+<div class="center-area">
+  <div id="mainStatus">Initialize Auraverse to begin</div>
+  <div id="transcript"></div>
+  <div id="vizLabel">STANDBY</div>
+  <div id="vizSub">SYSTEM READY</div>
+</div>
+
+<div id="volWrap">
+  <div class="vb" id="vb1"></div><div class="vb" id="vb2"></div><div class="vb" id="vb3"></div>
+  <div class="vb" id="vb4"></div><div class="vb" id="vb5"></div>
+</div>
+
+<div id="errMsg"></div>
+
+<div id="screenPreviewWrap">
+  <div class="scr-label">SCREEN SHARE ACTIVE</div>
+  <canvas id="screenCanvas"></canvas>
+</div>
+
+<div class="controls">
+  <div class="ctrl-btn" id="holdBtn" onclick="toggleHold()">
+    <div class="btn-c">⏸</div>
+    <span class="btn-lbl">Hold</span>
+  </div>
+  <div class="ctrl-btn" id="micBtn" onclick="toggleMic()">
+    <div class="btn-c">🎤</div>
+    <span class="btn-lbl">Speak</span>
+  </div>
+  <div class="ctrl-btn" id="endBtn" onclick="endSession()">
+    <div class="btn-c">✕</div>
+    <span class="btn-lbl">End</span>
+  </div>
+</div>
+
+<div class="feat-controls">
+  <div class="feat-btn" id="camBtn" onclick="toggleCamera()">📷<span>VISION</span></div>
+  <div class="feat-btn" id="scrBtn" onclick="toggleScreen()">🖥️<span>SCREEN</span></div>
+  <div class="feat-btn" id="fileBtn" onclick="openFilePanel()">📁<span>FILES</span></div>
+  <div class="feat-btn" id="snapBtn" onclick="snapAndAsk()">👁️<span>LOOK</span></div>
+  <div class="feat-btn" onclick="toggleModePanel()">🌙<span>MODE</span></div>
+</div>
+
+<!-- ── FILE PANEL ── -->
+<div id="filePanel">
+  <span class="panel-close" onclick="closeFilePanel()">✕</span>
+  <h3>📁 FILE SYSTEM ACCESS</h3>
+  <div id="filePathBar">No folder selected</div>
+  <div id="fileActions">
+    <button class="faction-btn" onclick="pickFolder()">Open Folder</button>
+    <button class="faction-btn" onclick="askAboutFiles()">Ask Auraverse</button>
+    <button class="faction-btn" onclick="closeFilePanel()">Close</button>
+  </div>
+  <div id="fileList"><div style="color:rgba(255,255,255,0.3);font-size:12px">Select a folder to scan files</div></div>
+</div>
+
+ ── MEMORY PANEL ── 
+<div id="memPanel">
+  <h3>🧠 MEMORY</h3>
+  <div id="memList"></div>
+  <button id="clearMemBtn" onclick="clearMemory()">CLEAR ALL MEMORY</button>
+</div>
+
+<!-- ── MODE PANEL ── -->
+<div id="modePanel">
+  <span class="panel-close" onclick="toggleModePanel()">✕</span>
+  <h3>🌙 CONVERSATION MODE</h3>
+  <div class="mode-grid">
+    <div class="mode-card active" id="mode-default" onclick="setMode('default')">
+      <span class="mc-ico">🤖</span>
+      <span class="mc-name">DEFAULT</span>
+      <span class="mc-desc">General assistant, Tony Stark style</span>
+    </div>
+    <div class="mode-card" id="mode-study" onclick="setMode('study')">
+      <span class="mc-ico">📚</span>
+      <span class="mc-name">STUDY</span>
+      <span class="mc-desc">Detailed explanations, teach me like a professor</span>
+    </div>
+    <div class="mode-card" id="mode-coding" onclick="setMode('coding')">
+      <span class="mc-ico">💻</span>
+      <span class="mc-name">CODING</span>
+      <span class="mc-desc">Code-focused, step-by-step, debug help</span>
+    </div>
+    <div class="mode-card" id="mode-chill" onclick="setMode('chill')">
+      <span class="mc-ico">😎</span>
+      <span class="mc-name">CHILL</span>
+      <span class="mc-desc">Casual dost, fun banter, Hinglish</span>
+    </div>
+    <div class="mode-card" id="mode-focus" onclick="setMode('focus')">
+      <span class="mc-ico">🎯</span>
+      <span class="mc-name">FOCUS</span>
+      <span class="mc-desc">Ultra-concise, no fluff, just answers</span>
+    </div>
+    <div class="mode-card" id="mode-jarvis" onclick="setMode('jarvis')">
+      <span class="mc-ico">🦾</span>
+      <span class="mc-name">JARVIS</span>
+      <span class="mc-desc">Classic JARVIS from Iron Man</span>
+    </div>
+  </div>
+</div>
+
+<!-- ── REMINDER PANEL ── -->
+<div id="remPanel">
+  <h3>⏰ REMINDERS</h3>
+  <div class="rem-input-row">
+    <input class="rem-input" id="remText" placeholder="Reminder text..." type="text">
+    <input class="rem-input" id="remTime" type="datetime-local">
+    <button class="rem-add-btn" onclick="addReminder()">+ SET REMINDER</button>
+  </div>
+  <div id="remList"><div style="color:rgba(255,255,255,0.3);font-size:12px;margin-top:8px">No reminders set</div></div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════
+let apiKey = '';
+let isListening = false, isHeld = false;
+let audioCtx = null, micStream = null, animFrame = null;
+let finalTranscript = '', chatVisible = false, memVisible = false;
+let cameraActive = false, screenActive = false;
+let screenStream = null, camStream = null;
+let dirHandle = null, fileSummary = '';
+let conversationHistory = [];
+let vizMode = 'idle';
+let alwaysListening = false;
+let isSpeaking = false;
+let memoryCache = [];
+let selectedGender = localStorage.getItem('auraverse_gender') || 'male';
+let currentMode = localStorage.getItem('auraverse_mode') || 'default';
+let reminders = JSON.parse(localStorage.getItem('auraverse_reminders') || '[]');
+let remPanelVisible = false, modePanelVisible = false;
+let deferredInstallPrompt = null;
+const BACKEND = 'http://localhost:3000';
+
+const $ = id => document.getElementById(id);
+const vbars = [1,2,3,4,5].map(i => $('vb'+i));
+
+// ═══════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════
+window.addEventListener('load', () => {
+  // Gender restore karo
+  selectGender(selectedGender);
+  const btn = document.getElementById('voiceToggleBtn');
+  if (btn) btn.textContent = selectedGender === 'male' ? '👨' : '👩';
+
+  const saved = localStorage.getItem('auraverse_api_key');
+  if (saved && !saved.startsWith('gsk_')) {
+    localStorage.removeItem('auraverse_api_key');
+    return;
+  }
+  if (saved) { apiKey = saved; hideSetup(); }
+
+  // Mode restore karo
+  applyModeUI(currentMode);
+
+  // System info start karo
+  startSysInfo();
+
+  // Reminders check karo
+  startReminderCheck();
+
+  // PWA manifest inject karo
+  injectPWAManifest();
+
+  // Notification permission maango
+  requestNotifPermission();
+});
+
+function initJarvis() {
+  const key = $('apiKeyInput').value.trim();
+  if (!key.startsWith('gsk_')) {
+    showErr('Invalid Groq API key! Must start with gsk_');
+    return;
+  }
+  apiKey = key;
+  localStorage.setItem('auraverse_api_key', key);
+  hideSetup();
+}
+
+window.initJarvis = initJarvis; // Global scope mein explicitly set karo
+
+// ═══════════════════════════════════════════════
+//  GENDER / VOICE SELECTION
+// ═══════════════════════════════════════════════
+function selectGender(g) {
+  selectedGender = g;
+  localStorage.setItem('auraverse_gender', g);
+  const male   = document.getElementById('genderMale');
+  const female = document.getElementById('genderFemale');
+  if (g === 'male') {
+    male.style.cssText   += ';border-color:rgba(79,195,247,0.9);background:rgba(79,195,247,0.25);color:var(--accent)';
+    female.style.cssText += ';border-color:rgba(255,255,255,0.15);background:transparent;color:rgba(255,255,255,0.4)';
+  } else {
+    female.style.cssText += ';border-color:rgba(255,100,200,0.9);background:rgba(255,100,200,0.18);color:#ff80d5';
+    male.style.cssText   += ';border-color:rgba(255,255,255,0.15);background:transparent;color:rgba(255,255,255,0.4)';
+  }
+}
+
+function toggleVoiceGender() {
+  selectedGender = selectedGender === 'male' ? 'female' : 'male';
+  localStorage.setItem('auraverse_gender', selectedGender);
+  const btn = document.getElementById('voiceToggleBtn');
+  btn.textContent = selectedGender === 'male' ? '👨' : '👩';
+  showErr(`Voice: ${selectedGender === 'male' ? 'Male 👨' : 'Female 👩'}`);
+}
+
+function getVoiceForGender() {
+  const voices = window.speechSynthesis.getVoices();
+  if (selectedGender === 'female') {
+    // Priority 1: Google ki natural Hindi female
+    return voices.find(v => v.name === 'Google हिन्दी')
+        // Priority 2: Google Indian English female (sabse natural mobile pe)
+        || voices.find(v => v.name === 'Google UK English Female')
+        || voices.find(v => v.name === 'Google US English' && v.lang === 'en-US')
+        // Priority 3: Microsoft natural female voices
+        || voices.find(v => /microsoft.*zira|microsoft.*aria|microsoft.*jenny|microsoft.*sonia/i.test(v.name))
+        // Priority 4: Koi bhi hi-IN voice
+        || voices.find(v => v.lang === 'hi-IN')
+        // Priority 5: Koi bhi en-IN voice
+        || voices.find(v => v.lang === 'en-IN')
+        // Priority 6: Common female names
+        || voices.find(v => /\b(zira|aria|jenny|sonia|hazel|susan|karen|samantha|victoria|fiona|moira|tessa|natasha)\b/i.test(v.name))
+        // Priority 7: 2nd English voice (usually female on Android Chrome)
+        || (voices.filter(v => v.lang.startsWith('en'))[1] ?? null)
+        || voices[1]
+        || null;
+  } else {
+    // Male voice
+    return voices.find(v => v.name === 'Google UK English Male')
+        || voices.find(v => /microsoft.*david|microsoft.*mark|microsoft.*james/i.test(v.name))
+        || voices.find(v => v.lang === 'hi-IN')
+        || voices.find(v => v.lang.startsWith('en-IN'))
+        || voices.find(v => v.lang.startsWith('en'))
+        || voices[0]
+        || null;
+  }
+}
+
+function hideSetup() {
+  $('setupScreen').style.display = 'none';
+  $('mainStatus').textContent = 'Initializing Auraverse...';
+  updatePills();
+  welcomeAuraverse();
+}
+
+// ═══════════════════════════════════════════════
+//  STARTUP SOUND (Web Audio API)
+// ═══════════════════════════════════════════════
+function playStartupSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+
+    // Sci-fi rising tone sequence
+    const notes = [
+      { freq: 220,  start: 0.0,  dur: 0.18, vol: 0.18 },
+      { freq: 330,  start: 0.15, dur: 0.18, vol: 0.20 },
+      { freq: 440,  start: 0.30, dur: 0.18, vol: 0.22 },
+      { freq: 550,  start: 0.45, dur: 0.18, vol: 0.20 },
+      { freq: 660,  start: 0.60, dur: 0.30, vol: 0.25 },
+      { freq: 880,  start: 0.60, dur: 0.55, vol: 0.15 },
+    ];
+
+    notes.forEach(n => {
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.value = n.freq;
+      const s = ctx.currentTime + n.start;
+      gain.gain.setValueAtTime(0, s);
+      gain.gain.linearRampToValueAtTime(n.vol, s + 0.05);
+      gain.gain.linearRampToValueAtTime(0, s + n.dur);
+      osc.start(s);
+      osc.stop(s + n.dur + 0.05);
+    });
+
+    // Final power-on hum
+    const hum  = ctx.createOscillator();
+    const hgain = ctx.createGain();
+    hum.connect(hgain); hgain.connect(ctx.destination);
+    hum.type = 'triangle'; hum.frequency.value = 110;
+    hgain.gain.setValueAtTime(0, ctx.currentTime + 0.9);
+    hgain.gain.linearRampToValueAtTime(0.08, ctx.currentTime + 1.0);
+    hgain.gain.linearRampToValueAtTime(0, ctx.currentTime + 1.6);
+    hum.start(ctx.currentTime + 0.9);
+    hum.stop(ctx.currentTime + 1.7);
+
+  } catch(e) { /* audio supported nahi */ }
+}
+
+// ═══════════════════════════════════════════════
+//  WELCOME / INTRO
+// ═══════════════════════════════════════════════
+async function welcomeAuraverse() {
+  playStartupSound();
+
+  // Thoda wait karo sound ke liye
+  await new Promise(r => setTimeout(r, 900));
+
+  $('mainStatus').textContent = 'Auraverse Online';
+  $('vizLabel').textContent   = 'INITIALIZING';
+  $('vizSub').textContent     = 'SYSTEM BOOT';
+
+  const intro = `AURAVERSE online, Sir. I am your advanced AI assistant, created by Gandhi Tech AI. I can answer your questions in English and Hindi, control your PC, open apps and websites, take screenshots, check battery and system stats, access your files, use your camera for vision, and remember our conversations. How may I assist you today, Sir?`;
+
+  await new Promise(r => setTimeout(r, 400));
+  addMsg('AURAVERSE', intro, 'jarvis');
+  $('chatLog').classList.add('visible');
+  speak(intro);
+
+  await fetchMemoryFromBackend();
+  if (memoryCache.length > 0) {
+    setPill('pill-mem', true);
+  }
+
+  setStatus('Tap microphone to speak, Sir');
+  $('vizLabel').textContent = 'STANDBY';
+  $('vizSub').textContent   = 'SYSTEM READY';
+}
+
+function resetKey() {
+  localStorage.removeItem('auraverse_api_key');
+  location.reload();
+}
+
+// ═══════════════════════════════════════════════
+//  CLAUDE API CALL
+// ═══════════════════════════════════════════════
+async function callClaude(userText, imageBase64 = null, imageType = null) {
+  const memory = getMemory().slice(-8).join('\n');
+
+  const modePrompts = {
+    default: `You are Auraverse — Gandhi Tech AI advanced AI. Be concise, intelligent, slightly formal. Address user as "Sir". ALWAYS respond in English and Hindi.`,
+    study:   `You are Auraverse in Study Mode. Explain topics in depth like a professor — use examples, analogies, step-by-step breakdowns. Be thorough. Address user as "Sir".`,
+    coding:  `You are Auraverse in Coding Mode. Focus on code, debug issues, explain line-by-line when needed. Always provide working code snippets. Be precise. Address user as "Sir".`,
+    chill:   `You are Auraverse in Chill Mode. Be a fun, casual dost (friend). Use Hinglish naturally — mix Hindi and English. Be funny, relatable, use "yaar", "bhai", "sahi hai". Still be helpful.`,
+    focus:   `You are Auraverse in Focus Mode. Ultra-concise answers ONLY. No greetings, no filler. Just the direct answer in 1-3 sentences max. No "Sir" either.`,
+    jarvis:  `You are JARVIS from Iron Man. Speak exactly like JARVIS — highly formal British tone, "Indeed Sir", "Very well Sir", "Shall I proceed?". Reference Stark Tower, arc reactor, suit systems naturally.`,
+  };
+
+  const sysPrompt = `${modePrompts[currentMode] || modePrompts.default}
+Rules: Never mention Claude/Anthropic/Meta/Groq/Llama. You are Auraverse, not an LLM.
+If you see a screen/image, describe it precisely — exact button names, positions.
+Memory context:\n${memory || 'No memory yet.'}`;
+
+  // Build user message content
+  const userContent = [];
+  if (imageBase64 && imageType) {
+    userContent.push({
+      type: 'image_url',
+      image_url: { url: `data:${imageType};base64,${imageBase64}` }
+    });
+  }
+  userContent.push({ type: 'text', text: userText });
+
+  // Keep conversation history (last 10 turns)
+  conversationHistory.push({ role: 'user', content: userContent });
+  if (conversationHistory.length > 20) conversationHistory = conversationHistory.slice(-20);
+
+  // Use vision model if image present, else fast text model
+  const model = imageBase64
+    ? 'meta-llama/llama-4-scout-17b-16e-instruct'
+    : 'llama-3.3-70b-versatile';
+
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model: model,
+      max_tokens: 1024,
+      messages: [
+        { role: 'system', content: sysPrompt },
+        ...conversationHistory
+      ]
+    })
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error?.message || `API Error ${res.status}`);
+  }
+
+  const data = await res.json();
+  const reply = data.choices?.[0]?.message?.content || 'No response, Sir.';
+
+  conversationHistory.push({ role: 'assistant', content: [{ type: 'text', text: reply }] });
+  if (conversationHistory.length > 20) conversationHistory = conversationHistory.slice(-20);
+
+  autoSave(userText, reply);
+  return reply;
+}
+
+// ═══════════════════════════════════════════════
+//  SPEECH RECOGNITION
+// ═══════════════════════════════════════════════
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec = null;
+
+if (SR) {
+  rec = new SR();
+  rec.lang = 'en-US';
+  rec.continuous = false;
+  rec.interimResults = true;
+
+  rec.onresult = async (e) => {
+    let interim = ''; finalTranscript = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      if (e.results[i].isFinal) finalTranscript += e.results[i][0].transcript;
+      else interim += e.results[i][0].transcript;
+    }
+    if (interim) $('transcript').textContent = `"${interim}"`;
+    if (finalTranscript) {
+      $('transcript').textContent = `"${finalTranscript}"`;
+      addMsg('YOU', finalTranscript, 'user');
+      setStatus('Processing...');
+      await processUserInput(finalTranscript);
+    }
+  };
+
+  rec.onend = () => {
+    isListening = false;
+    document.body.classList.remove('listening');
+    $('micBtn').classList.remove('listening');
+    stopViz();
+
+    // Always listening mode: auto restart karo jab tak user stop na kare
+    if (alwaysListening && !isHeld && !isSpeaking) {
+      $('micBtn').querySelector('.btn-lbl').textContent = 'Active';
+      setStatus('Always listening...');
+      setTimeout(() => { if (alwaysListening && !isSpeaking) startListening(); }, 300);
+    } else if (!alwaysListening) {
+      $('micBtn').querySelector('.btn-lbl').textContent = 'Speak';
+      if (!finalTranscript) setStatus('Tap microphone to speak, Sir');
+    }
+  };
+
+  rec.onerror = (e) => {
+    isListening = false;
+    document.body.classList.remove('listening');
+    $('micBtn').classList.remove('listening');
+    stopViz();
+    const m = { 'not-allowed':'Mic blocked — allow in browser settings', 'audio-capture':'Mic not found', 'network':'Network error', 'aborted':'', 'no-speech':'' };
+    if (m[e.error] !== undefined && m[e.error]) showErr(m[e.error]);
+    // Error ke baad bhi auto-restart
+    if (alwaysListening && !isHeld && e.error !== 'not-allowed' && e.error !== 'audio-capture') {
+      setTimeout(() => { if (alwaysListening && !isSpeaking) startListening(); }, 1000);
+    }
+  };
+} else {
+  $('mainStatus').textContent = 'Use Chrome for voice support';
+}
+
+// ═══════════════════════════════════════════════
+//  PROCESS USER INPUT (voice or text)
+// ═══════════════════════════════════════════════
+async function processUserInput(text) {
+  if (!apiKey) { showErr('Initialize Auraverse first'); return; }
+
+  // Reminder voice command detect karo
+  const remMatch = text.match(/(?:remind|reminder|alarm|yaad dila|set alarm|set reminder)[^\d]*(\d{1,2})[:\s]?(\d{0,2})\s*(am|pm|baje)?/i);
+  if (remMatch) {
+    const reply = await callClaude(text);
+    addMsg('AURAVERSE', reply, 'jarvis');
+    speak(reply);
+    // Parse time from voice
+    parseAndSetVoiceReminder(text);
+    return;
+  }
+
+  let imgBase64 = null, imgType = null, visionNote = '';
+
+  // Auto-capture screen frame if screen share is active
+  if (screenActive && screenStream) {
+    const result = captureFrame('screen');
+    if (result) { imgBase64 = result.data; imgType = result.type; visionNote = '🖥️ Screen captured'; }
+  }
+  // Else auto-capture camera if active
+  else if (cameraActive && camStream) {
+    const result = captureFrame('camera');
+    if (result) { imgBase64 = result.data; imgType = result.type; visionNote = '📷 Camera frame captured'; }
+  }
+
+  // Include file summary if available
+  let fullText = text;
+  if (fileSummary) fullText += `\n\n[User's folder contents: ${fileSummary}]`;
+
+  try {
+    const reply = await callClaude(fullText, imgBase64, imgType);
+    addMsg('AURAVERSE', reply, 'jarvis', visionNote);
+    setStatus('Tap microphone to speak, Sir');
+    $('transcript').textContent = '';
+    speak(reply);
+  } catch (err) {
+    addMsg('AURAVERSE', `Error: ${err.message}`, 'jarvis');
+    setStatus('Error occurred');
+    showErr(err.message.substring(0, 60));
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  MIC CONTROLS
+// ═══════════════════════════════════════════════
+function startListening() {
+  if (!rec || !apiKey || isHeld || isListening || isSpeaking) return;
+  navigator.mediaDevices.getUserMedia({ audio: true })
+    .then(stream => {
+      micStream = stream;
+      startViz(stream);
+      try { rec.start(); } catch(e) { return; }
+      isListening = true;
+      document.body.classList.add('listening');
+      $('micBtn').classList.add('listening');
+      $('micBtn').querySelector('.btn-lbl').textContent = alwaysListening ? 'Active' : 'Listening';
+      setStatus(alwaysListening ? 'Always listening...' : 'Listening...');
+      $('transcript').textContent = '';
+      $('errMsg').textContent = '';
+    })
+    .catch(() => showErr('Mic blocked — allow in browser settings'));
+}
+
+function toggleMic() {
+  if (!rec) return;
+  if (!apiKey) { showErr('Initialize Auraverse first'); return; }
+  if (isHeld)  { showErr('Resume session first'); return; }
+
+  if (alwaysListening) {
+    // Always listening band karo
+    alwaysListening = false;
+    if (isListening) rec.stop();
+    $('micBtn').classList.remove('listening');
+    $('micBtn').querySelector('.btn-lbl').textContent = 'Speak';
+    setStatus('Tap microphone to speak, Sir');
+  } else {
+    // Always listening shuru karo
+    alwaysListening = true;
+    startListening();
+  }
+}
+
+function toggleHold() {
+  isHeld = !isHeld;
+  const hb = $('holdBtn');
+  if (isHeld) {
+    if (isListening) rec.stop();
+    hb.querySelector('.btn-lbl').textContent = 'Resume';
+    hb.querySelector('.btn-c').textContent = '▶';
+    setStatus('Session on hold');
+  } else {
+    hb.querySelector('.btn-lbl').textContent = 'Hold';
+    hb.querySelector('.btn-c').textContent = '⏸';
+    setStatus('Tap microphone to speak, Sir');
+  }
+}
+
+function endSession() {
+  if (isListening && rec) rec.stop();
+  stopViz();
+  window.speechSynthesis.cancel();
+  if (screenStream) { screenStream.getTracks().forEach(t=>t.stop()); screenActive = false; }
+  if (camStream)    { camStream.getTracks().forEach(t=>t.stop()); cameraActive = false; }
+  setStatus('Session ended — refresh to restart');
+  $('micBtn').style.opacity = '0.3';
+  $('micBtn').style.pointerEvents = 'none';
+  $('faceStatus').textContent = 'SESSION TERMINATED';
+  updatePills();
+}
+
+// ═══════════════════════════════════════════════
+//  TTS
+// ═══════════════════════════════════════════════
+function cleanForSpeech(text) {
+  return text
+    .replace(/```[\s\S]*?```/g, 'code block omitted')
+    .replace(/`[^`]*`/g, '')
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/\*(.*?)\*/g, '$1')
+    .replace(/#{1,6}\s/g, '')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/[*_~`>#\-]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function speak(text) {
+    window.speechSynthesis.cancel();
+    const cleaned = cleanForSpeech(text);
+    if (!cleaned) return;
+
+    const doSpeak = () => {
+        const utterance = new SpeechSynthesisUtterance(cleaned);
+        const voice = getVoiceForGender();
+        utterance.voice = voice;
+        utterance.lang  = voice?.lang || (selectedGender === 'female' ? 'en-IN' : 'en-US');
+
+        // ── Natural voice settings ──
+        // pitch: 1.0 = default (changing pitch sounds robotic — avoid)
+        // rate:  female thoda slow = natural, male normal speed
+        utterance.pitch  = 1.0;                              // ALWAYS 1.0 — most natural
+        utterance.rate   = selectedGender === 'female' ? 0.9 : 0.95; // slightly slow = human feel
+        utterance.volume = 1.0;
+
+        utterance.onstart = () => {
+            isSpeaking = true;
+            if (isListening) { try { rec.stop(); } catch(e) {} }
+            vizMode = 'speaking';
+            document.body.classList.add('speaking');
+            document.getElementById('vizLabel').textContent = 'SPEAKING';
+            document.getElementById('vizSub').textContent   = 'AUDIO OUTPUT';
+        };
+        utterance.onend = () => {
+            isSpeaking = false;
+            vizMode = 'idle';
+            document.body.classList.remove('speaking');
+            document.getElementById('vizLabel').textContent = 'STANDBY';
+            document.getElementById('vizSub').textContent   = 'SYSTEM READY';
+            if (alwaysListening && !isHeld) setTimeout(() => startListening(), 400);
+        };
+        utterance.onerror = () => {
+            isSpeaking = false;
+            document.body.classList.remove('speaking');
+            if (alwaysListening && !isHeld) setTimeout(() => startListening(), 400);
+        };
+
+        window.speechSynthesis.speak(utterance);
+    };
+
+    // Voices async load hoti hain browser mein — wait karo agar empty
+    if (window.speechSynthesis.getVoices().length === 0) {
+        window.speechSynthesis.onvoiceschanged = () => {
+            window.speechSynthesis.onvoiceschanged = null;
+            doSpeak();
+        };
+    } else {
+        doSpeak();
+    }
+}
+
+// ═══════════════════════════════════════════════
+//  VOLUME VISUALIZER
+// ═══════════════════════════════════════════════
+function startViz(stream) {
+  stopViz();
+  audioCtx = new AudioContext();
+  const analyser = audioCtx.createAnalyser();
+  audioCtx.createMediaStreamSource(stream).connect(analyser);
+  analyser.fftSize = 32;
+  const data = new Uint8Array(analyser.frequencyBinCount);
+  $('volWrap').classList.add('on');
+  function draw() {
+    analyser.getByteFrequencyData(data);
+    vbars.forEach((b,i) => { b.style.height = Math.max(3,(data[i*2]||0)*0.18)+'px'; });
+    animFrame = requestAnimationFrame(draw);
+  }
+  draw();
+}
+
+function stopViz() {
+  if (animFrame) { cancelAnimationFrame(animFrame); animFrame = null; }
+  if (audioCtx && audioCtx.state !== 'closed') { audioCtx.close().catch(()=>{}); audioCtx = null; }
+  if (micStream) { micStream.getTracks().forEach(t=>t.stop()); micStream = null; }
+  $('volWrap').classList.remove('on');
+  vbars.forEach(b => b.style.height = '3px');
+}
+
+// ═══════════════════════════════════════════════
+//  CAMERA VISION
+// ═══════════════════════════════════════════════
+async function toggleCamera() {
+  if (cameraActive) {
+    if (camStream) { camStream.getTracks().forEach(t=>t.stop()); camStream = null; }
+    cameraActive = false;
+    $('camFeed').style.display = 'none';
+    $('camFeed').srcObject = null;
+    $('camPh').style.display = 'flex';
+    $('faceStatus').textContent = 'CAM OFF';
+    $('camBtn').classList.remove('active');
+    updatePills();
+    return;
+  }
+  try {
+    camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode:'user', width:640, height:480 }, audio: false });
+    $('camFeed').srcObject = camStream;
+    $('camFeed').style.display = 'block';
+    $('camPh').style.display = 'none';
+    cameraActive = true;
+    $('camBtn').classList.add('active');
+    $('faceStatus').textContent = 'CAM ACTIVE';
+    runFaceDetect($('camFeed'));
+    updatePills();
+  } catch {
+    showErr('Camera blocked — allow in browser settings');
+  }
+}
+
+// Capture a single frame from camera or screen
+function captureFrame(source) {
+  try {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (source === 'camera' && $('camFeed').videoWidth) {
+      canvas.width = 640; canvas.height = 480;
+      ctx.drawImage($('camFeed'), 0, 0, 640, 480);
+    } else if (source === 'screen') {
+      const vid = document.getElementById('screenVideo');
+      if (!vid || !vid.videoWidth) return null;
+      canvas.width = Math.min(vid.videoWidth, 1280);
+      canvas.height = Math.min(vid.videoHeight, 720);
+      ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
+      // Also update preview
+      const prev = $('screenCanvas');
+      prev.width = 120; prev.height = 70;
+      const pctx = prev.getContext('2d');
+      pctx.drawImage(vid, 0, 0, 120, 70);
+    } else return null;
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+    const base64 = dataUrl.split(',')[1];
+    return { data: base64, type: 'image/jpeg' };
+  } catch { return null; }
+}
+
+// ── Snap & Ask (one-shot vision) ──
+async function snapAndAsk() {
+  if (!apiKey) { showErr('Initialize Auraverse first'); return; }
+  let result = null, label = '';
+  if (screenActive) { result = captureFrame('screen'); label = 'screen'; }
+  else if (cameraActive) { result = captureFrame('camera'); label = 'camera'; }
+  else { showErr('Enable Camera or Screen Share first'); return; }
+  if (!result) { showErr('Could not capture frame'); return; }
+  setStatus('Analyzing visual...');
+  addMsg('YOU', `[${label === 'screen' ? '🖥️ Screen snapshot' : '📷 Camera snapshot'}]`, 'user');
+  try {
+    const reply = await callClaude('Describe exactly what you see in this image. If it is a screen, tell me what app/website is open, what options are visible, and where I should click to accomplish common tasks. Be specific about positions.', result.data, result.type);
+    addMsg('AURAVERSE', reply, 'jarvis', label === 'screen' ? '🖥️ Screen analyzed' : '📷 Camera analyzed');
+    setStatus('Tap microphone to speak, Sir');
+    speak(reply);
+  } catch (err) {
+    showErr(err.message.substring(0,60));
+  }
+}
+
+// Face detection (brightness-based presence)
+function runFaceDetect(video) {
+  const canvas = document.createElement('canvas');
+  const ctx2 = canvas.getContext('2d');
+  let fp = false, scanInt = null, li = 0;
+  const labels = ['SCANNING','ANALYZING','MATCHING','VERIFYING','CROSS-REF'];
+  function detect() {
+    if (!cameraActive) return;
+    if (!video.videoWidth) { requestAnimationFrame(detect); return; }
+    canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+    ctx2.drawImage(video, 0, 0);
+    const fr = ctx2.getImageData(canvas.width/4, canvas.height/4, canvas.width/2, canvas.height/2);
+    let rT = 0;
+    for (let i = 0; i < fr.data.length; i+=4) rT += fr.data[i];
+    const brightness = rT / (fr.data.length/4);
+    const hasF = brightness > 40 && brightness < 220;
+    if (hasF && !fp) {
+      fp = true; li = 0;
+      scanInt = setInterval(() => {
+        $('faceStatus').textContent = labels[li % labels.length] + '..';
+        li++;
+        if (li >= labels.length) { clearInterval(scanInt); $('faceStatus').textContent = '✓ IDENTITY VERIFIED'; }
+      }, 500);
+    } else if (!hasF && fp) {
+      fp = false; clearInterval(scanInt);
+      $('faceStatus').textContent = 'NO FACE DETECTED';
+    }
+    requestAnimationFrame(detect);
+  }
+  video.addEventListener('loadeddata', detect, { once: true });
+  if (video.readyState >= 3) detect();
+}
+
+// ═══════════════════════════════════════════════
+//  SCREEN SHARE
+// ═══════════════════════════════════════════════
+async function toggleScreen() {
+  if (screenActive) {
+    if (screenStream) { screenStream.getTracks().forEach(t=>t.stop()); screenStream = null; }
+    screenActive = false;
+    const vid = document.getElementById('screenVideo');
+    if (vid) vid.remove();
+    $('scrBtn').classList.remove('active');
+    $('screenPreviewWrap').classList.remove('on');
+    updatePills();
+    setStatus('Screen share stopped');
+    return;
+  }
+  try {
+    screenStream = await navigator.mediaDevices.getDisplayMedia({
+      video: { cursor: 'always', displaySurface: 'monitor' },
+      audio: false
+    });
+    // Create hidden video element to capture frames
+    let vid = document.getElementById('screenVideo');
+    if (!vid) { vid = document.createElement('video'); vid.id='screenVideo'; vid.style.display='none'; vid.autoplay=true; document.body.appendChild(vid); }
+    vid.srcObject = screenStream;
+    screenActive = true;
+    $('scrBtn').classList.add('active');
+    $('screenPreviewWrap').classList.add('on');
+    updatePills();
+    setStatus('Screen share active — I can see your screen, Sir');
+    screenStream.getVideoTracks()[0].addEventListener('ended', () => {
+      screenActive = false;
+      $('scrBtn').classList.remove('active');
+      $('screenPreviewWrap').classList.remove('on');
+      updatePills();
+    });
+    // Periodically update preview thumbnail
+    setInterval(() => {
+      if (!screenActive) return;
+      captureFrame('screen'); // updates canvas as side effect
+    }, 2000);
+  } catch (e) {
+    if (e.name !== 'NotAllowedError') showErr('Screen share failed: ' + e.message);
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  FILE SYSTEM
+// ═══════════════════════════════════════════════
+function openFilePanel() { $('filePanel').classList.add('open'); }
+function closeFilePanel() { $('filePanel').classList.remove('open'); }
+
+async function pickFolder() {
+  if (!('showDirectoryPicker' in window)) {
+    showErr('File System API not supported — use Chrome desktop');
+    return;
+  }
+  try {
+    dirHandle = await window.showDirectoryPicker({ mode: 'read' });
+    $('filePathBar').textContent = '/' + dirHandle.name;
+    await renderDirectory(dirHandle);
+    updatePills();
+    setPill('pill-files', true);
+  } catch (e) {
+    if (e.name !== 'AbortError') showErr('Folder access failed');
+  }
+}
+
+async function renderDirectory(handle, depth = 0) {
+  const list = $('fileList');
+  if (depth === 0) { list.innerHTML = ''; fileSummary = ''; }
+  const entries = [];
+  for await (const entry of handle.values()) entries.push(entry);
+  entries.sort((a,b) => { if(a.kind===b.kind) return a.name.localeCompare(b.name); return a.kind==='directory'?-1:1; });
+
+  for (const entry of entries) {
+    const div = document.createElement('div');
+    const isDir = entry.kind === 'directory';
+    div.className = 'file-item' + (isDir ? ' folder' : '');
+    const ext = entry.name.split('.').pop()?.toLowerCase();
+    const icon = isDir ? '📁' : getFileIcon(ext);
+    div.innerHTML = `<span class="fi-icon">${icon}</span><span class="fi-name">${entry.name}</span><span class="fi-type">${isDir ? 'DIR' : ext?.toUpperCase() || 'FILE'}</span>`;
+    if (isDir) {
+      div.onclick = async () => {
+        $('filePathBar').textContent = '/' + dirHandle.name + '/' + entry.name;
+        await renderDirectory(entry, depth + 1);
+      };
+    } else {
+      div.onclick = () => askAboutFile(entry);
+    }
+    list.appendChild(div);
+    fileSummary += (isDir ? '[DIR] ' : '') + entry.name + ', ';
+  }
+  if (entries.length === 0) list.innerHTML += '<div style="color:rgba(255,255,255,0.3);font-size:12px">Empty folder</div>';
+}
+
+function getFileIcon(ext) {
+  const map = { js:'🟨',ts:'🔷',py:'🐍',html:'🌐',css:'🎨',json:'📋',md:'📝',txt:'📄',pdf:'📕',jpg:'🖼️',jpeg:'🖼️',png:'🖼️',mp4:'🎬',mp3:'🎵',zip:'📦',exe:'⚙️',sh:'💻',sql:'🗄️',csv:'📊',xlsx:'📊',docx:'📄',pptx:'📊' };
+  return map[ext] || '📄';
+}
+
+async function askAboutFile(fileHandle) {
+  if (!apiKey) { showErr('Initialize Auraverse first'); return; }
+  try {
+    const file = await fileHandle.getFile();
+    closeFilePanel();
+    setStatus(`Reading ${file.name}...`);
+    if (file.size > 500000) {
+      addMsg('YOU', `Tell me about this file: ${file.name} (${(file.size/1024).toFixed(1)}KB)`, 'user');
+      const reply = await callClaude(`User has a file: "${file.name}", size: ${(file.size/1024).toFixed(1)}KB, type: ${file.type || 'unknown'}. Describe what this file likely contains and how they can use it.`);
+      addMsg('AURAVERSE', reply, 'jarvis');
+      speak(reply);
+      return;
+    }
+    // Read text files
+    const textTypes = ['text','json','js','py','html','css','md','csv','sh','sql'];
+    const isText = textTypes.some(t => file.type.includes(t) || file.name.endsWith('.'+t));
+    if (isText) {
+      const content = await file.text();
+      addMsg('YOU', `Analyze this file: ${file.name}`, 'user');
+      const reply = await callClaude(`Analyze this file named "${file.name}":\n\n${content.substring(0,3000)}${content.length>3000?'\n[...truncated]':''}\n\nGive a concise summary and any important observations.`);
+      addMsg('AURAVERSE', reply, 'jarvis');
+      speak(reply);
+    } else if (file.type.startsWith('image/')) {
+      // Send image to Claude Vision
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const base64 = e.target.result.split(',')[1];
+        addMsg('YOU', `Analyze image: ${file.name}`, 'user');
+        const reply = await callClaude(`Analyze this image file named "${file.name}"`, base64, file.type);
+        addMsg('AURAVERSE', reply, 'jarvis', '📷 Image analyzed');
+        speak(reply);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      addMsg('YOU', `Tell me about: ${file.name}`, 'user');
+      const reply = await callClaude(`User has a ${file.type || 'binary'} file: "${file.name}" (${(file.size/1024).toFixed(1)}KB). What is this file type used for?`);
+      addMsg('AURAVERSE', reply, 'jarvis');
+      speak(reply);
+    }
+    setStatus('Tap microphone to speak, Sir');
+  } catch (err) {
+    showErr('Could not read file: ' + err.message);
+  }
+}
+
+async function askAboutFiles() {
+  if (!apiKey) { showErr('Initialize Auraverse first'); return; }
+  if (!fileSummary) { showErr('Open a folder first'); return; }
+  closeFilePanel();
+  addMsg('YOU', 'What can you tell me about my files?', 'user');
+  setStatus('Analyzing folder...');
+  const reply = await callClaude(`Analyze this folder structure and give insights: ${fileSummary}`);
+  addMsg('AURAVERSE', reply, 'jarvis');
+  speak(reply);
+  setStatus('Tap microphone to speak, Sir');
+}
+
+// ═══════════════════════════════════════════════
+//  MEMORY (Backend + localStorage fallback)
+// ═══════════════════════════════════════════════
+function getMemory() { return memoryCache; }
+
+async function fetchMemoryFromBackend() {
+  try {
+    const res = await fetch(`${BACKEND}/recall`, { signal: AbortSignal.timeout(2000) });
+    const data = await res.json();
+    // Backend "facts" array seedha milta hai
+    if (Array.isArray(data.facts)) {
+      memoryCache = data.facts;
+    } else if (data.memory) {
+      memoryCache = data.memory.split('. ').filter(Boolean);
+    }
+    // localStorage bhi sync rakho
+    localStorage.setItem('auraverse_memory', JSON.stringify(memoryCache));
+  } catch (e) {
+    // Backend nahi mila, localStorage se load karo
+    memoryCache = JSON.parse(localStorage.getItem('auraverse_memory') || '[]');
+  }
+  return memoryCache;
+}
+
+async function saveMemoryToBackend(fact) {
+  // localStorage mein save karo
+  memoryCache.push(fact);
+  if (memoryCache.length > 100) memoryCache = memoryCache.slice(-100);
+  localStorage.setItem('auraverse_memory', JSON.stringify(memoryCache));
+  setPill('pill-mem', true);
+  // Backend mein bhi save karo
+  try {
+    await fetch(`${BACKEND}/remember`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fact }),
+      signal: AbortSignal.timeout(3000)
+    });
+  } catch (e) { console.log('Backend unavailable, using localStorage only'); }
+}
+
+async function autoSave(user, jarvis) {
+  // Trigger words wali cheezein save karo
+  const triggers = ['my name is','i am','i work','i like','i prefer','remember','mera naam','main hoon','yaad rakho','my age','meri umar','i live','mera ghar'];
+  if (triggers.some(t => user.toLowerCase().includes(t))) {
+    const fact = `[${new Date().toLocaleDateString()}] ${user.substring(0,150)}`;
+    await saveMemoryToBackend(fact);
+    setPill('pill-mem', true);
+  }
+  // Har conversation backend mein save karo (last 100 rakho)
+  const convoFact = `[${new Date().toLocaleString()}] You: ${user.substring(0,80)} | Auraverse: ${jarvis.substring(0,80)}`;
+  await saveMemoryToBackend(convoFact);
+}
+
+async function clearMemory() {
+  if (confirm('Clear all Auraverse memory?')) {
+    memoryCache = [];
+    localStorage.removeItem('auraverse_memory');
+    try {
+      await fetch(`${BACKEND}/clear`, { method: 'DELETE', signal: AbortSignal.timeout(2000) });
+    } catch (e) {}
+    renderMemPanel();
+    setPill('pill-mem', false);
+  }
+}
+
+async function renderMemPanel() {
+  await fetchMemoryFromBackend();
+  const ml = $('memList');
+  ml.innerHTML = '';
+  if (!memoryCache.length) {
+    ml.innerHTML = '<div style="color:rgba(255,255,255,0.3);font-size:12px">No memories yet</div>';
+    return;
+  }
+  memoryCache.slice().reverse().forEach(f => {
+    const d = document.createElement('div');
+    d.className = 'mem-item';
+    d.textContent = f;
+    ml.appendChild(d);
+  });
+}
+
+function toggleMem() {
+  memVisible = !memVisible;
+  $('memPanel').classList.toggle('open', memVisible);
+  if (memVisible) renderMemPanel();
+}
+
+// ═══════════════════════════════════════════════
+//  UI HELPERS
+// ═══════════════════════════════════════════════
+function addMsg(sender, text, type, visionNote = '') {
+  const d = document.createElement('div');
+  d.className = `msg ${type}`;
+  d.innerHTML = `<div class="sndr">${sender}</div>${text}${visionNote ? `<div class="vision-tag">${visionNote}</div>` : ''}`;
+  $('chatLog').appendChild(d);
+  $('chatLog').scrollTop = $('chatLog').scrollHeight;
+}
+
+function setStatus(text) { $('mainStatus').textContent = text; }
+function showErr(msg) {
+  $('errMsg').textContent = msg;
+  setTimeout(() => $('errMsg').textContent = '', 4000);
+}
+
+function toggleChat() {
+  chatVisible = !chatVisible;
+  $('chatLog').classList.toggle('visible', chatVisible);
+}
+
+function setPill(id, on, warn = false) {
+  const el = $(id);
+  el.classList.remove('on','warn');
+  if (on) el.classList.add(warn ? 'warn' : 'on');
+}
+
+function updatePills() {
+  setPill('pill-cam',   cameraActive);
+  setPill('pill-scr',   screenActive);
+  setPill('pill-files', !!dirHandle);
+  setPill('pill-mem',   getMemory().length > 0);
+}
+
+// Init: memory backend se load karo aur pills update karo
+fetchMemoryFromBackend().then(() => {
+  setPill('pill-mem', memoryCache.length > 0);
+});
+updatePills();
+// ═══════════════════════════════════════════════
+//  🔋 SYSTEM INFO
+// ═══════════════════════════════════════════════
+function startSysInfo() {
+  updateSysInfo();
+  setInterval(updateSysInfo, 30000);
+}
+
+async function updateSysInfo() {
+  // Battery
+  try {
+    const bat = await navigator.getBattery();
+    const pct = Math.round(bat.level * 100);
+    const charging = bat.charging;
+    const batEl = $('siBattery');
+    $('siBat').textContent = `${pct}%${charging ? '⚡' : ''}`;
+    batEl.className = 'sys-item' + (pct <= 20 ? ' warn' : pct >= 60 ? ' good' : '');
+    batEl.querySelector('span') || null;
+  } catch(e) { $('siBat').textContent = 'N/A'; }
+
+  // Network
+  const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  const online = navigator.onLine;
+  const netEl = $('siNet');
+  if (!online) {
+    $('siNetTxt').textContent = 'OFFLINE';
+    netEl.className = 'sys-item warn';
+  } else if (conn) {
+    const type = conn.effectiveType || conn.type || 'online';
+    $('siNetTxt').textContent = type.toUpperCase();
+    netEl.className = 'sys-item good';
+  } else {
+    $('siNetTxt').textContent = 'ONLINE';
+    netEl.className = 'sys-item good';
+  }
+
+  // Time
+  const now = new Date();
+  $('siTimeTxt').textContent = now.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' });
+}
+
+window.addEventListener('online',  updateSysInfo);
+window.addEventListener('offline', updateSysInfo);
+
+// ═══════════════════════════════════════════════
+//  🔔 NOTIFICATIONS
+// ═══════════════════════════════════════════════
+async function requestNotifPermission() {
+  if ('Notification' in window && Notification.permission === 'default') {
+    await Notification.requestPermission();
+  }
+}
+
+function sendNotification(title, body, icon = '🤖') {
+  // In-app toast pehle dikhao
+  showNotifToast(icon + ' ' + title, body);
+
+  // Native notification agar permission hai
+  if ('Notification' in window && Notification.permission === 'granted') {
+    try {
+      new Notification(title, {
+        body: body,
+        icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🤖</text></svg>',
+        badge: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🔔</text></svg>',
+        tag: 'auraverse',
+        renotify: true,
+        vibrate: [200, 100, 200]
+      });
+    } catch(e) {}
+  }
+}
+
+function showNotifToast(title, body) {
+  const toast = $('notifToast');
+  $('notifText').innerHTML = `<strong>${title}</strong>${body ? '<br><span style="opacity:0.7;font-size:11px">'+body+'</span>' : ''}`;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 5000);
+}
+
+// ═══════════════════════════════════════════════
+//  ⏰ REMINDERS
+// ═══════════════════════════════════════════════
+function toggleRemPanel() {
+  remPanelVisible = !remPanelVisible;
+  $('remPanel').classList.toggle('open', remPanelVisible);
+  if (remPanelVisible) renderReminders();
+}
+
+function addReminder() {
+  const text = $('remText').value.trim();
+  const time = $('remTime').value;
+  if (!text) { showErr('Reminder text likhо'); return; }
+  if (!time)  { showErr('Time select karo'); return; }
+
+  const rem = { id: Date.now(), text, time, done: false };
+  reminders.push(rem);
+  localStorage.setItem('auraverse_reminders', JSON.stringify(reminders));
+  $('remText').value = '';
+  $('remTime').value = '';
+  renderReminders();
+  showErr(`Reminder set: ${text}`);
+}
+
+function deleteReminder(id) {
+  reminders = reminders.filter(r => r.id !== id);
+  localStorage.setItem('auraverse_reminders', JSON.stringify(reminders));
+  renderReminders();
+}
+
+function renderReminders() {
+  const list = $('remList');
+  list.innerHTML = '';
+  const active = reminders.filter(r => !r.done);
+  if (!active.length) {
+    list.innerHTML = '<div style="color:rgba(255,255,255,0.3);font-size:12px;margin-top:8px">No reminders set</div>';
+    return;
+  }
+  active.forEach(r => {
+    const d = document.createElement('div');
+    d.className = 'rem-item';
+    const dt = new Date(r.time);
+    d.innerHTML = `
+      <div style="flex:1">
+        <div>${r.text}</div>
+        <div class="rem-time">${dt.toLocaleString('en-IN', {dateStyle:'short', timeStyle:'short'})}</div>
+      </div>
+      <span class="rem-del" onclick="deleteReminder(${r.id})">🗑️</span>`;
+    list.appendChild(d);
+  });
+}
+
+function startReminderCheck() {
+  setInterval(() => {
+    const now = Date.now();
+    reminders.forEach(r => {
+      if (!r.done && new Date(r.time).getTime() <= now) {
+        r.done = true;
+        localStorage.setItem('auraverse_reminders', JSON.stringify(reminders));
+        sendNotification('⏰ REMINDER', r.text);
+        speak(`Sir, reminder alert — ${r.text}`);
+        addMsg('AURAVERSE', `⏰ Reminder: ${r.text}`, 'jarvis');
+      }
+    });
+  }, 15000); // Har 15 sec check karo
+}
+
+// Voice se reminder set karo
+function parseAndSetVoiceReminder(text) {
+  // Simple time parsing: "5 baje" "8:30 AM" "subah 7"
+  const now = new Date();
+  let targetTime = null;
+  const tmatch = text.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm|baje|subah|shaam)?/i);
+  if (tmatch) {
+    let hr = parseInt(tmatch[1]);
+    const mn = parseInt(tmatch[2] || 0);
+    const period = (tmatch[3] || '').toLowerCase();
+    if (period === 'pm' || period === 'shaam') { if (hr < 12) hr += 12; }
+    else if (period === 'am' || period === 'subah') { if (hr === 12) hr = 0; }
+    targetTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hr, mn, 0);
+    if (targetTime < now) targetTime.setDate(targetTime.getDate() + 1);
+  }
+  if (targetTime) {
+    const label = text.replace(/remind me|reminder|alarm|set|please|yaad dila|baje|subah|shaam/gi, '').trim() || 'Reminder';
+    const rem = { id: Date.now(), text: label, time: targetTime.toISOString(), done: false };
+    reminders.push(rem);
+    localStorage.setItem('auraverse_reminders', JSON.stringify(reminders));
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  🌙 CONVERSATION MODES
+// ═══════════════════════════════════════════════
+function setMode(mode) {
+  currentMode = mode;
+  localStorage.setItem('auraverse_mode', mode);
+  conversationHistory = []; // Naye mode mein fresh start
+  applyModeUI(mode);
+  toggleModePanel();
+
+  const modeNames = { default:'Default', study:'Study', coding:'Coding', chill:'Chill', focus:'Focus', jarvis:'JARVIS' };
+  const msg = `Mode switched to ${modeNames[mode]} — conversation reset, Sir.`;
+  addMsg('AURAVERSE', msg, 'jarvis');
+  speak(msg);
+}
+
+function applyModeUI(mode) {
+  document.querySelectorAll('.mode-card').forEach(el => el.classList.remove('active'));
+  const card = $('mode-' + mode);
+  if (card) card.classList.add('active');
+  const names = { default:'DEFAULT', study:'STUDY', coding:'CODING', chill:'CHILL', focus:'FOCUS', jarvis:'JARVIS' };
+  const el = $('modeName');
+  if (el) el.textContent = names[mode] || mode.toUpperCase();
+}
+
+function toggleModePanel() {
+  modePanelVisible = !modePanelVisible;
+  $('modePanel').classList.toggle('open', modePanelVisible);
+}
+
+// ═══════════════════════════════════════════════
+//  📱 PWA — INSTALL AS APP
+// ═══════════════════════════════════════════════
+function injectPWAManifest() {
+  // Manifest ko dynamically inject karo (hosted file nahi chahiye)
+  const manifest = {
+    name: 'AURAVERSE',
+    short_name: 'AURAVERSE',
+    description: 'Advanced AI Interface by Gandhi Tech AI',
+    start_url: './',
+    display: 'standalone',
+    background_color: '#04090f',
+    theme_color: '#04090f',
+    orientation: 'portrait',
+    icons: [
+      { src: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" fill="%2304090f"/><text y="140" x="20" font-size="150">🤖</text></svg>', sizes: '192x192', type: 'image/svg+xml' },
+      { src: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" fill="%2304090f"/><text y="380" x="40" font-size="400">🤖</text></svg>', sizes: '512x512', type: 'image/svg+xml' }
+    ]
+  };
+  const blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  $('pwaManifest').href = url;
+}
+
+// Install prompt capture karo
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  $('installBanner').classList.add('show');
+});
+
+window.addEventListener('appinstalled', () => {
+  $('installBanner').classList.remove('show');
+  sendNotification('✅ Installed!', 'AURAVERSE home screen pe add ho gaya');
+  deferredInstallPrompt = null;
+});
+
+async function pwaInstall() {
+  if (!deferredInstallPrompt) {
+    showErr('Install option unavailable — try "Add to Home Screen" from browser menu');
+    return;
+  }
+  deferredInstallPrompt.prompt();
+  const { outcome } = await deferredInstallPrompt.userChoice;
+  if (outcome === 'accepted') {
+    $('installBanner').classList.remove('show');
+  }
+  deferredInstallPrompt = null;
+}
+
+function dismissInstall() {
+  $('installBanner').classList.remove('show');
+}
+
+// ═══════════════════════════════════════════════
+//  Service Worker register (PWA offline support)
+// ═══════════════════════════════════════════════
+if ('serviceWorker' in navigator) {
+  // Inline service worker (no separate file needed)
+  const swCode = `
+self.addEventListener('install', e => self.skipWaiting());
+self.addEventListener('activate', e => e.waitUntil(clients.claim()));
+self.addEventListener('fetch', e => {
+  if (e.request.mode === 'navigate') {
+    e.respondWith(fetch(e.request).catch(() => caches.match('/') || new Response('AURAVERSE offline')));
+  }
+});`;
+  const swBlob = new Blob([swCode], { type: 'application/javascript' });
+  const swUrl  = URL.createObjectURL(swBlob);
+  navigator.serviceWorker.register(swUrl).catch(() => {});
+}
+
+</script>
+</body>
+</html>

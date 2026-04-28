@@ -1,0 +1,7 @@
+flask
+requests
+psutil
+pyautogui
+pyperclip
+python-dotenv
+openai
