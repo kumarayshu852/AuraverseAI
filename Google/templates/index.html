@@ -652,7 +652,7 @@ let currentMode = localStorage.getItem('auraverse_mode') || 'default';
 let reminders = JSON.parse(localStorage.getItem('auraverse_reminders') || '[]');
 let remPanelVisible = false, modePanelVisible = false;
 let deferredInstallPrompt = null;
-const BACKEND = 'http://localhost:3000';
+const BACKEND = 'https://auraverseai-backend.onrender.com/';
 
 const $ = id => document.getElementById(id);
 const vbars = [1,2,3,4,5].map(i => $('vb'+i));
